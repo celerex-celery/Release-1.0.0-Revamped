@@ -1,0 +1,319 @@
+package net.minecraft.src;
+
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.nio.IntBuffer;
+import java.util.Random;
+import javax.imageio.ImageIO;
+import org.lwjgl.opengl.GL11;
+
+public class FontRenderer {
+	private int[] charWidth = new int[256];
+	public int fontTextureName = 0;
+	public int field_41063_b = 8;
+	private int fontDisplayLists;
+	private IntBuffer buffer = GLAllocation.createDirectIntBuffer(1024);
+	public Random field_41064_c = new Random();
+
+	public FontRenderer(GameSettings var1, String var2, RenderEngine var3) {
+		BufferedImage var4;
+		try {
+			var4 = ImageIO.read(RenderEngine.class.getResourceAsStream(var2));
+		} catch (IOException var18) {
+			throw new RuntimeException(var18);
+		}
+
+		int var5 = var4.getWidth();
+		int var6 = var4.getHeight();
+		int[] var7 = new int[var5 * var6];
+		var4.getRGB(0, 0, var5, var6, var7, 0, var5);
+
+		int var9;
+		int var10;
+		int var11;
+		int var12;
+		int var15;
+		int var16;
+		for(int var8 = 0; var8 < 256; ++var8) {
+			var9 = var8 % 16;
+			var10 = var8 / 16;
+
+			for(var11 = 7; var11 >= 0; --var11) {
+				var12 = var9 * 8 + var11;
+				boolean var13 = true;
+
+				for(int var14 = 0; var14 < 8 && var13; ++var14) {
+					var15 = (var10 * 8 + var14) * var5;
+					var16 = var7[var12 + var15] & 255;
+					if(var16 > 0) {
+						var13 = false;
+					}
+				}
+
+				if(!var13) {
+					break;
+				}
+			}
+
+			if(var8 == 32) {
+				var11 = 2;
+			}
+
+			this.charWidth[var8] = var11 + 2;
+		}
+
+		this.fontTextureName = var3.allocateAndSetupTexture(var4);
+		this.fontDisplayLists = GLAllocation.generateDisplayLists(288);
+		Tessellator var19 = Tessellator.instance;
+
+		for(var9 = 0; var9 < 256; ++var9) {
+			GL11.glNewList(this.fontDisplayLists + var9, GL11.GL_COMPILE);
+			var19.startDrawingQuads();
+			var10 = var9 % 16 * 8;
+			var11 = var9 / 16 * 8;
+			float var20 = 7.99F;
+			float var21 = 0.0F;
+			float var23 = 0.0F;
+			var19.addVertexWithUV(0.0D, (double)(0.0F + var20), 0.0D, (double)((float)var10 / 128.0F + var21), (double)(((float)var11 + var20) / 128.0F + var23));
+			var19.addVertexWithUV((double)(0.0F + var20), (double)(0.0F + var20), 0.0D, (double)(((float)var10 + var20) / 128.0F + var21), (double)(((float)var11 + var20) / 128.0F + var23));
+			var19.addVertexWithUV((double)(0.0F + var20), 0.0D, 0.0D, (double)(((float)var10 + var20) / 128.0F + var21), (double)((float)var11 / 128.0F + var23));
+			var19.addVertexWithUV(0.0D, 0.0D, 0.0D, (double)((float)var10 / 128.0F + var21), (double)((float)var11 / 128.0F + var23));
+			var19.draw();
+			GL11.glTranslatef((float)this.charWidth[var9], 0.0F, 0.0F);
+			GL11.glEndList();
+		}
+
+		for(var9 = 0; var9 < 32; ++var9) {
+			var10 = (var9 >> 3 & 1) * 85;
+			var11 = (var9 >> 2 & 1) * 170 + var10;
+			var12 = (var9 >> 1 & 1) * 170 + var10;
+			int var22 = (var9 >> 0 & 1) * 170 + var10;
+			if(var9 == 6) {
+				var11 += 85;
+			}
+
+			boolean var24 = var9 >= 16;
+			if(var1.anaglyph) {
+				var15 = (var11 * 30 + var12 * 59 + var22 * 11) / 100;
+				var16 = (var11 * 30 + var12 * 70) / 100;
+				int var17 = (var11 * 30 + var22 * 70) / 100;
+				var11 = var15;
+				var12 = var16;
+				var22 = var17;
+			}
+
+			if(var24) {
+				var11 /= 4;
+				var12 /= 4;
+				var22 /= 4;
+			}
+
+			GL11.glNewList(this.fontDisplayLists + 256 + var9, GL11.GL_COMPILE);
+			GL11.glColor3f((float)var11 / 255.0F, (float)var12 / 255.0F, (float)var22 / 255.0F);
+			GL11.glEndList();
+		}
+
+	}
+
+	public void drawStringWithShadow(String var1, int var2, int var3, int var4) {
+		this.renderString(var1, var2 + 1, var3 + 1, var4, true);
+		this.drawString(var1, var2, var3, var4);
+	}
+
+	public void drawString(String var1, int var2, int var3, int var4) {
+		this.renderString(var1, var2, var3, var4, false);
+	}
+
+	public void renderString(String var1, int var2, int var3, int var4, boolean var5) {
+		if(var1 != null) {
+			boolean var6 = false;
+			int var7;
+			if(var5) {
+				var7 = var4 & -16777216;
+				var4 = (var4 & 16579836) >> 2;
+				var4 += var7;
+			}
+
+			GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.fontTextureName);
+			float var11 = (float)(var4 >> 16 & 255) / 255.0F;
+			float var8 = (float)(var4 >> 8 & 255) / 255.0F;
+			float var9 = (float)(var4 & 255) / 255.0F;
+			float var10 = (float)(var4 >> 24 & 255) / 255.0F;
+			if(var10 == 0.0F) {
+				var10 = 1.0F;
+			}
+
+			GL11.glColor4f(var11, var8, var9, var10);
+			this.buffer.clear();
+			GL11.glPushMatrix();
+			GL11.glTranslatef((float)var2, (float)var3, 0.0F);
+
+			for(var7 = 0; var7 < var1.length(); ++var7) {
+				int var14;
+				for(; var1.length() > var7 + 1 && var1.charAt(var7) == 167; var7 += 2) {
+					char var12 = var1.toLowerCase().charAt(var7 + 1);
+					if(var12 == 107) {
+						var6 = true;
+					} else {
+						var6 = false;
+						var14 = "0123456789abcdef".indexOf(var12);
+						if(var14 < 0 || var14 > 15) {
+							var14 = 15;
+						}
+
+						this.buffer.put(this.fontDisplayLists + 256 + var14 + (var5 ? 16 : 0));
+						if(this.buffer.remaining() == 0) {
+							this.buffer.flip();
+							GL11.glCallLists(this.buffer);
+							this.buffer.clear();
+						}
+					}
+				}
+
+				if(var7 < var1.length()) {
+					int var13 = ChatAllowedCharacters.allowedCharacters.indexOf(var1.charAt(var7));
+					if(var13 >= 0) {
+						if(!var6) {
+							this.buffer.put(this.fontDisplayLists + var13 + 32);
+						} else {
+							boolean var15 = false;
+
+							do {
+								var14 = this.field_41064_c.nextInt(ChatAllowedCharacters.allowedCharacters.length());
+							} while(this.charWidth[var13 + 32] != this.charWidth[var14 + 32]);
+
+							this.buffer.put(this.fontDisplayLists + 256 + this.field_41064_c.nextInt(2) + 8 + (var5 ? 16 : 0));
+							this.buffer.put(this.fontDisplayLists + var14 + 32);
+						}
+					}
+				}
+
+				if(this.buffer.remaining() == 0) {
+					this.buffer.flip();
+					GL11.glCallLists(this.buffer);
+					this.buffer.clear();
+				}
+			}
+
+			this.buffer.flip();
+			GL11.glCallLists(this.buffer);
+			GL11.glPopMatrix();
+		}
+	}
+
+	public int getStringWidth(String var1) {
+		if(var1 == null) {
+			return 0;
+		} else {
+			int var2 = 0;
+
+			for(int var3 = 0; var3 < var1.length(); ++var3) {
+				if(var1.charAt(var3) == 167) {
+					++var3;
+				} else {
+					int var4 = ChatAllowedCharacters.allowedCharacters.indexOf(var1.charAt(var3));
+					if(var4 >= 0) {
+						var2 += this.charWidth[var4 + 32];
+					}
+				}
+			}
+
+			return var2;
+		}
+	}
+
+	public void drawSplitString(String var1, int var2, int var3, int var4, int var5) {
+		this.func_40609_a(var1, var2, var3, var4, var5, false);
+	}
+
+	public void func_40609_a(String var1, int var2, int var3, int var4, int var5, boolean var6) {
+		String[] var7 = var1.split("\n");
+		if(var7.length > 1) {
+			for(int var14 = 0; var14 < var7.length; ++var14) {
+				this.drawSplitString(var7[var14], var2, var3, var4, var5);
+				var3 += this.splitStringWidth(var7[var14], var4);
+			}
+
+		} else {
+			String[] var8 = var1.split(" ");
+			int var9 = 0;
+			String var10 = "";
+
+			while(var9 < var8.length) {
+				String var11;
+				for(var11 = var10 + var8[var9++] + " "; var9 < var8.length && this.getStringWidth(var11 + var8[var9]) < var4; var11 = var11 + var8[var9++] + " ") {
+				}
+
+				int var12;
+				for(; this.getStringWidth(var11) > var4; var11 = var10 + var11.substring(var12)) {
+					for(var12 = 0; this.getStringWidth(var11.substring(0, var12 + 1)) <= var4; ++var12) {
+					}
+
+					if(var11.substring(0, var12).trim().length() > 0) {
+						String var13 = var11.substring(0, var12);
+						if(var13.lastIndexOf("\u00a7") >= 0) {
+							var10 = "\u00a7" + var13.charAt(var13.lastIndexOf("\u00a7") + 1);
+						}
+
+						this.renderString(var13, var2, var3, var5, var6);
+						var3 += this.field_41063_b;
+					}
+				}
+
+				if(this.getStringWidth(var11.trim()) > 0) {
+					if(var11.lastIndexOf("\u00a7") >= 0) {
+						var10 = "\u00a7" + var11.charAt(var11.lastIndexOf("\u00a7") + 1);
+					}
+
+					this.renderString(var11, var2, var3, var5, var6);
+					var3 += this.field_41063_b;
+				}
+			}
+
+		}
+	}
+
+	public int splitStringWidth(String var1, int var2) {
+		String[] var3 = var1.split("\n");
+		int var5;
+		if(var3.length > 1) {
+			int var9 = 0;
+
+			for(var5 = 0; var5 < var3.length; ++var5) {
+				var9 += this.splitStringWidth(var3[var5], var2);
+			}
+
+			return var9;
+		} else {
+			String[] var4 = var1.split(" ");
+			var5 = 0;
+			int var6 = 0;
+
+			while(var5 < var4.length) {
+				String var7;
+				for(var7 = var4[var5++] + " "; var5 < var4.length && this.getStringWidth(var7 + var4[var5]) < var2; var7 = var7 + var4[var5++] + " ") {
+				}
+
+				int var8;
+				for(; this.getStringWidth(var7) > var2; var7 = var7.substring(var8)) {
+					for(var8 = 0; this.getStringWidth(var7.substring(0, var8 + 1)) <= var2; ++var8) {
+					}
+
+					if(var7.substring(0, var8).trim().length() > 0) {
+						var6 += this.field_41063_b;
+					}
+				}
+
+				if(var7.trim().length() > 0) {
+					var6 += this.field_41063_b;
+				}
+			}
+
+			if(var6 < this.field_41063_b) {
+				var6 += this.field_41063_b;
+			}
+
+			return var6;
+		}
+	}
+}
