@@ -17,7 +17,13 @@ public enum EnumOptions {
 	AMBIENT_OCCLUSION("options.ao", false, true),
 	GUI_SCALE("options.guiScale", false, false),
 	RENDER_CLOUDS("options.renderClouds", false, true),
-	PARTICLES("options.particles", false, false);
+	PARTICLES("options.particles", false, false),
+	VSYNC("options.vsync", false, true),
+	SPRINT_TOGGLE("options.sprintToggle", false, true),
+	CONTROLLER_ENABLED("options.controllerEnabled", false, true),
+	CONTROLLER_SENSITIVITY("options.controllerSensitivity", true, false),
+	CONTROLLER_DEADZONE("options.controllerDeadzone", true, false),
+	CONTROLLER_INVERT_Y("options.controllerInvertY", false, true);
 
 	private final boolean enumFloat;
 	private final boolean enumBoolean;

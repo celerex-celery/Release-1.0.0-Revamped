@@ -138,12 +138,25 @@ public class EntityPlayerSP extends EntityPlayer {
 			this.pushOutOfBlocks(this.posX + (double)this.width * 0.35D, this.boundingBox.minY + 0.5D, this.posZ - (double)this.width * 0.35D);
 			this.pushOutOfBlocks(this.posX + (double)this.width * 0.35D, this.boundingBox.minY + 0.5D, this.posZ + (double)this.width * 0.35D);
 			boolean var4 = (float)this.getFoodStats().getFoodLevel() > 6.0F;
-			if(this.onGround && !var3 && this.movementInput.moveForward >= var2 && !this.isSprinting() && var4 && !this.isUsingItem() && !this.isPotionActive(Potion.potionBlindness)) {
-				if(this.sprintToggleTimer == 0) {
-					this.sprintToggleTimer = 7;
-				} else {
-					this.setSprinting(true);
-					this.sprintToggleTimer = 0;
+			
+			// Sprint toggle logic
+			if(this.mc.gameSettings.sprintToggle && this.mc.gameSettings.keyBindSprint.pressed) {
+				if(this.mc.gameSettings.keyBindSprint.isPressed()) {
+					if(this.isSprinting()) {
+						this.setSprinting(false);
+					} else if(var4 && !this.isUsingItem() && !this.isPotionActive(Potion.potionBlindness) && this.onGround && this.movementInput.moveForward >= var2) {
+						this.setSprinting(true);
+					}
+				}
+			} else {
+				// Original double-tap sprint logic
+				if(this.onGround && !var3 && this.movementInput.moveForward >= var2 && !this.isSprinting() && var4 && !this.isUsingItem() && !this.isPotionActive(Potion.potionBlindness)) {
+					if(this.sprintToggleTimer == 0) {
+						this.sprintToggleTimer = 7;
+					} else {
+						this.setSprinting(true);
+						this.sprintToggleTimer = 0;
+					}
 				}
 			}
 

@@ -7,6 +7,9 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Controllers;
+import org.lwjgl.input.Controller;
+import org.lwjgl.opengl.Display;
 
 public class GameSettings {
 	private static final String[] RENDER_DISTANCES = new String[]{"options.renderDistance.far", "options.renderDistance.normal", "options.renderDistance.short", "options.renderDistance.tiny"};
@@ -17,6 +20,7 @@ public class GameSettings {
 	public float musicVolume = 1.0F;
 	public float soundVolume = 1.0F;
 	public float mouseSensitivity = 0.5F;
+	public float controllerSensitivity = 0.5F;
 	public boolean invertMouse = false;
 	public int renderDistance = 0;
 	public boolean viewBobbing = true;
@@ -40,7 +44,8 @@ public class GameSettings {
 	public KeyBinding keyBindUseItem = new KeyBinding("key.use", -99);
 	public KeyBinding keyBindPlayerList = new KeyBinding("key.playerlist", 15);
 	public KeyBinding keyBindPickBlock = new KeyBinding("key.pickItem", -98);
-	public KeyBinding[] keyBindings = new KeyBinding[]{this.keyBindAttack, this.keyBindUseItem, this.keyBindForward, this.keyBindLeft, this.keyBindBack, this.keyBindRight, this.keyBindJump, this.keyBindSneak, this.keyBindDrop, this.keyBindInventory, this.keyBindChat, this.keyBindPlayerList, this.keyBindPickBlock};
+	public KeyBinding keyBindSprint = new KeyBinding("key.sprint", 29); // Left Ctrl
+	public KeyBinding[] keyBindings = new KeyBinding[]{this.keyBindAttack, this.keyBindUseItem, this.keyBindForward, this.keyBindLeft, this.keyBindBack, this.keyBindRight, this.keyBindJump, this.keyBindSneak, this.keyBindDrop, this.keyBindInventory, this.keyBindChat, this.keyBindPlayerList, this.keyBindPickBlock, this.keyBindSprint};
 	protected Minecraft mc;
 	private File optionsFile;
 	public int difficulty = 2;
@@ -57,6 +62,12 @@ public class GameSettings {
 	public float gammaSetting = 0.0F;
 	public int guiScale = 0;
 	public int field_41087_P = 0;
+	public boolean controllerEnabled = true;
+	public float controllerDeadzone = 0.2F;
+	public boolean controllerInvertY = false;
+	public int controllerIndex = 0;
+	public boolean vsync = true;
+	public boolean sprintToggle = false;
 
 	public GameSettings(Minecraft var1, File var2) {
 		this.mc = var1;
@@ -107,6 +118,14 @@ public class GameSettings {
 
 		if(var1 == EnumOptions.GAMMA) {
 			this.gammaSetting = var2;
+		}
+
+		if(var1 == EnumOptions.CONTROLLER_SENSITIVITY) {
+			this.controllerSensitivity = var2;
+		}
+
+		if(var1 == EnumOptions.CONTROLLER_DEADZONE) {
+			this.controllerDeadzone = var2;
 		}
 
 	}
@@ -164,11 +183,28 @@ public class GameSettings {
 			this.mc.renderGlobal.loadRenderers();
 		}
 
+		if(var1 == EnumOptions.VSYNC) {
+			this.vsync = !this.vsync;
+			Display.setVSyncEnabled(this.vsync);
+		}
+
+		if(var1 == EnumOptions.SPRINT_TOGGLE) {
+			this.sprintToggle = !this.sprintToggle;
+		}
+
+		if(var1 == EnumOptions.CONTROLLER_ENABLED) {
+			this.controllerEnabled = !this.controllerEnabled;
+		}
+
+		if(var1 == EnumOptions.CONTROLLER_INVERT_Y) {
+			this.controllerInvertY = !this.controllerInvertY;
+		}
+
 		this.saveOptions();
 	}
 
 	public float getOptionFloatValue(EnumOptions var1) {
-		return var1 == EnumOptions.FOV ? this.fovSetting : (var1 == EnumOptions.GAMMA ? this.gammaSetting : (var1 == EnumOptions.MUSIC ? this.musicVolume : (var1 == EnumOptions.SOUND ? this.soundVolume : (var1 == EnumOptions.SENSITIVITY ? this.mouseSensitivity : 0.0F))));
+		return var1 == EnumOptions.FOV ? this.fovSetting : (var1 == EnumOptions.GAMMA ? this.gammaSetting : (var1 == EnumOptions.MUSIC ? this.musicVolume : (var1 == EnumOptions.SOUND ? this.soundVolume : (var1 == EnumOptions.SENSITIVITY ? this.mouseSensitivity : (var1 == EnumOptions.CONTROLLER_SENSITIVITY ? this.controllerSensitivity : (var1 == EnumOptions.CONTROLLER_DEADZONE ? this.controllerDeadzone : 0.0F))))));
 	}
 
 	public boolean getOptionOrdinalValue(EnumOptions var1) {
@@ -185,6 +221,14 @@ public class GameSettings {
 			return this.ambientOcclusion;
 		case 6:
 			return this.clouds;
+		case 7:
+			return this.vsync;
+		case 8:
+			return this.sprintToggle;
+		case 9:
+			return this.controllerEnabled;
+		case 10:
+			return this.controllerInvertY;
 		default:
 			return false;
 		}
@@ -299,6 +343,26 @@ public class GameSettings {
 						this.lastServer = var3[1];
 					}
 
+					if(var3[0].equals("vsync")) {
+						this.vsync = var3[1].equals("true");
+					}
+
+					if(var3[0].equals("sprintToggle")) {
+						this.sprintToggle = var3[1].equals("true");
+					}
+
+					if(var3[0].equals("controllerEnabled")) {
+						this.controllerEnabled = var3[1].equals("true");
+					}
+
+					if(var3[0].equals("controllerDeadzone")) {
+						this.controllerDeadzone = this.parseFloat(var3[1]);
+					}
+
+					if(var3[0].equals("controllerInvertY")) {
+						this.controllerInvertY = var3[1].equals("true");
+					}
+
 					for(int var4 = 0; var4 < this.keyBindings.length; ++var4) {
 						if(var3[0].equals("key_" + this.keyBindings[var4].keyDescription)) {
 							this.keyBindings[var4].keyCode = Integer.parseInt(var3[1]);
@@ -340,9 +404,14 @@ public class GameSettings {
 			var1.println("ao:" + this.ambientOcclusion);
 			var1.println("clouds:" + this.clouds);
 			var1.println("skin:" + this.skin);
-			var1.println("lastServer:" + this.lastServer);
+var1.println("lastServer:" + this.lastServer);
+		var1.println("vsync:" + this.vsync);
+		var1.println("sprintToggle:" + this.sprintToggle);
+		var1.println("controllerEnabled:" + this.controllerEnabled);
+		var1.println("controllerDeadzone:" + this.controllerDeadzone);
+		var1.println("controllerInvertY:" + this.controllerInvertY);
 
-			for(int var2 = 0; var2 < this.keyBindings.length; ++var2) {
+		for(int var2 = 0; var2 < this.keyBindings.length; ++var2) {
 				var1.println("key_" + this.keyBindings[var2].keyDescription + ":" + this.keyBindings[var2].keyCode);
 			}
 

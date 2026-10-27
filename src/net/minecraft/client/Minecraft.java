@@ -118,6 +118,7 @@ import net.minecraft.src.WorldRenderer;
 import net.minecraft.src.WorldSettings;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.input.Controllers;
+import org.lwjgl.input.Controller;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.Display;
@@ -304,6 +305,7 @@ public abstract class Minecraft implements Runnable {
 		GL11.glMatrixMode(GL11.GL_MODELVIEW);
 		this.checkGLError("Startup");
 		this.glCapabilities = new OpenGlCapsChecker();
+		Display.setVSyncEnabled(this.gameSettings.vsync);
 		this.sndManager.loadSoundSettings(this.gameSettings);
 		this.renderEngine.registerTextureFX(this.textureLavaFX);
 		this.renderEngine.registerTextureFX(this.textureWaterFX);
@@ -1186,6 +1188,11 @@ public abstract class Minecraft implements Runnable {
 				--this.leftClickCounter;
 			}
 
+			Profiler.endStartSection("controller");
+			if(this.gameSettings.controllerEnabled && this.thePlayer != null && Controllers.getControllerCount() > this.gameSettings.controllerIndex) {
+				this.pollController();
+			}
+
 			Profiler.endStartSection("keyboard");
 
 			label339:
@@ -1988,8 +1995,168 @@ if(cmd.equals("give")) {
 				var3 = true;
 			}
 
-			this.thePlayer.inventory.setCurrentItem(var1, var2, var3, this.playerController instanceof PlayerControllerCreative);
+this.thePlayer.inventory.setCurrentItem(var1, var2, var3, this.playerController instanceof PlayerControllerCreative);
+		}
+	}
+
+	private void pollController() {
+		Controllers.poll();
+		Controller controller = Controllers.getController(this.gameSettings.controllerIndex);
+		if(controller == null) {
+			return;
 		}
 
+		float deadzone = this.gameSettings.controllerDeadzone;
+		float sensitivity = this.gameSettings.controllerSensitivity;
+		boolean invertY = this.gameSettings.controllerInvertY;
+
+		// Left stick - movement (set keybindings)
+		float leftX = controller.getAxisValue(0); // Left stick X
+		float leftY = controller.getAxisValue(1); // Left stick Y
+		if(Math.abs(leftX) < deadzone) leftX = 0;
+		if(Math.abs(leftY) < deadzone) leftY = 0;
+
+		// Map left stick to movement keybindings
+		this.gameSettings.keyBindLeft.pressed = leftX < -deadzone;
+		this.gameSettings.keyBindRight.pressed = leftX > deadzone;
+		this.gameSettings.keyBindBack.pressed = leftY > deadzone; // Y is forward/back
+		this.gameSettings.keyBindForward.pressed = leftY < -deadzone;
+
+		// Right stick - camera look
+		float rightX = controller.getAxisValue(2); // Right stick X
+		float rightY = controller.getAxisValue(3); // Right stick Y
+		if(Math.abs(rightX) < deadzone) rightX = 0;
+		if(Math.abs(rightY) < deadzone) rightY = 0;
+		if(rightX != 0 || rightY != 0) {
+			this.thePlayer.rotationYaw += rightX * sensitivity * 2.0F;
+			if(invertY) {
+				this.thePlayer.rotationPitch += rightY * sensitivity * 2.0F;
+			} else {
+				this.thePlayer.rotationPitch -= rightY * sensitivity * 2.0F;
+			}
+			if(this.thePlayer.rotationPitch > 90.0F) this.thePlayer.rotationPitch = 90.0F;
+			if(this.thePlayer.rotationPitch < -90.0F) this.thePlayer.rotationPitch = -90.0F;
+		}
+
+		// Buttons - check for pressed state
+		// A button (0) - Sneak
+		this.gameSettings.keyBindSneak.pressed = controller.isButtonPressed(0);
+
+		// B button (1) - Jump
+		if(controller.isButtonPressed(1)) {
+			if(!this.prevControllerButtonB) {
+				this.gameSettings.keyBindJump.pressed = true;
+			}
+			this.prevControllerButtonB = true;
+		} else {
+			this.gameSettings.keyBindJump.pressed = false;
+			this.prevControllerButtonB = false;
+		}
+
+		// X button (2) - Inventory
+		if(controller.isButtonPressed(2)) {
+			if(!this.prevControllerButtonX) {
+				this.displayGuiScreen(new GuiInventory(this.thePlayer));
+			}
+			this.prevControllerButtonX = true;
+		} else {
+			this.prevControllerButtonX = false;
+		}
+
+		// Y button (3) - Quick move (shift-click in containers)
+		if(controller.isButtonPressed(3)) {
+			if(!this.prevControllerButtonY && this.currentScreen != null && this.currentScreen instanceof net.minecraft.src.GuiContainer) {
+				this.gameSettings.keyBindPickBlock.pressed = true;
+			}
+			this.prevControllerButtonY = true;
+		} else {
+			this.gameSettings.keyBindPickBlock.pressed = false;
+			this.prevControllerButtonY = false;
+		}
+
+		// D-pad right (9) - Chat
+		if(controller.isButtonPressed(9)) {
+			if(!this.prevControllerDpadRight && this.thePlayer != null) {
+				this.displayGuiScreen(new GuiChat());
+			}
+			this.prevControllerDpadRight = true;
+		} else {
+			this.prevControllerDpadRight = false;
+		}
+
+		// D-pad up (10) - F5 perspective
+		if(controller.isButtonPressed(10)) {
+			if(!this.prevControllerDpadUp) {
+				this.gameSettings.thirdPersonView = (this.gameSettings.thirdPersonView + 1) % 3;
+			}
+			this.prevControllerDpadUp = true;
+		} else {
+			this.prevControllerDpadUp = false;
+		}
+
+		// D-pad down (11) - Pick block
+		if(controller.isButtonPressed(11)) {
+			if(!this.prevControllerDpadDown) {
+				this.clickMiddleMouseButton();
+			}
+			this.prevControllerDpadDown = true;
+		} else {
+			this.prevControllerDpadDown = false;
+		}
+
+		// D-pad left (12) - F3 debug
+		if(controller.isButtonPressed(12)) {
+			if(!this.prevControllerDpadLeft) {
+				this.gameSettings.showDebugInfo = !this.gameSettings.showDebugInfo;
+			}
+			this.prevControllerDpadLeft = true;
+		} else {
+			this.prevControllerDpadLeft = false;
+		}
+
+		// Left shoulder (4) - Hotbar left
+		if(controller.isButtonPressed(4)) {
+			if(!this.prevControllerLeftShoulder) {
+				this.thePlayer.inventory.changeCurrentItem(-1);
+			}
+			this.prevControllerLeftShoulder = true;
+		} else {
+			this.prevControllerLeftShoulder = false;
+		}
+
+		// Right shoulder (5) - Hotbar right
+		if(controller.isButtonPressed(5)) {
+			if(!this.prevControllerRightShoulder) {
+				this.thePlayer.inventory.changeCurrentItem(1);
+			}
+			this.prevControllerRightShoulder = true;
+		} else {
+			this.prevControllerRightShoulder = false;
+		}
+
+		// Left trigger (6) - Attack
+		if(controller.getAxisValue(6) > 0.5F) {
+			this.gameSettings.keyBindAttack.pressed = true;
+		} else {
+			this.gameSettings.keyBindAttack.pressed = false;
+		}
+
+		// Right trigger (7) - Use item
+		if(controller.getAxisValue(7) > 0.5F) {
+			this.gameSettings.keyBindUseItem.pressed = true;
+		} else {
+			this.gameSettings.keyBindUseItem.pressed = false;
+		}
 	}
+
+	private boolean prevControllerButtonB = false;
+	private boolean prevControllerButtonX = false;
+	private boolean prevControllerButtonY = false;
+	private boolean prevControllerDpadRight = false;
+	private boolean prevControllerDpadUp = false;
+	private boolean prevControllerDpadDown = false;
+	private boolean prevControllerDpadLeft = false;
+	private boolean prevControllerLeftShoulder = false;
+	private boolean prevControllerRightShoulder = false;
+
 }

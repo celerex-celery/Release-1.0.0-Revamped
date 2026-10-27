@@ -5,7 +5,7 @@ public class GuiVideoSettings extends GuiScreen {
 	protected String field_22107_a = "Video Settings";
 	private GameSettings guiGameSettings;
 	private boolean field_40231_d = false;
-	private static EnumOptions[] videoOptions = new EnumOptions[]{EnumOptions.GRAPHICS, EnumOptions.RENDER_DISTANCE, EnumOptions.AMBIENT_OCCLUSION, EnumOptions.FRAMERATE_LIMIT, EnumOptions.ANAGLYPH, EnumOptions.VIEW_BOBBING, EnumOptions.GUI_SCALE, EnumOptions.ADVANCED_OPENGL, EnumOptions.GAMMA, EnumOptions.RENDER_CLOUDS, EnumOptions.PARTICLES};
+	private static EnumOptions[] videoOptions = new EnumOptions[]{EnumOptions.GRAPHICS, EnumOptions.RENDER_DISTANCE, EnumOptions.AMBIENT_OCCLUSION, EnumOptions.FRAMERATE_LIMIT, EnumOptions.ANAGLYPH, EnumOptions.VIEW_BOBBING, EnumOptions.GUI_SCALE, EnumOptions.ADVANCED_OPENGL, EnumOptions.GAMMA, EnumOptions.RENDER_CLOUDS, EnumOptions.PARTICLES, EnumOptions.CONTROLLER_SENSITIVITY, EnumOptions.CONTROLLER_DEADZONE, EnumOptions.CONTROLLER_INVERT_Y};
 
 	public GuiVideoSettings(GuiScreen var1, GameSettings var2) {
 		this.parentGuiScreen = var1;
